@@ -162,11 +162,17 @@ cache.
   "customProviders": {
     "corp-glm": {
       "api": "openai-completions",
-      "models": [{ "id": "glm-4.7", "name": "GLM 4.7" }]
+      "models": [{ "id": "glm-4.7", "name": "GLM 4.7", "input": ["text", "image"] }]
     }
   }
 }
 ```
+
+`input` is optional per model and lists the input modalities the model
+accepts (`"text"`, `"image"`). When the pi-bridge plugin is present this is
+usually supplied automatically from models.dev; setting it by hand is useful
+for proxies that cannot serve the enriched catalogue. Omitting it defaults to
+`["text"]`.
 
 Values support `!command` (shell exec), `$ENV_VAR`, or literal strings. The `/cliproxy-setup` wizard also accepts bare `~/path` values and saves them as `!cat` commands; when editing the file by hand, write the `!cat ~/path` form explicitly.
 

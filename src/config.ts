@@ -101,6 +101,8 @@ export interface BuiltinProviderConfig {
 export interface CustomProviderModelConfig {
 	id: string;
 	name?: string;
+	/** Input modalities the model accepts, e.g. ["text","image"]. Defaults to ["text"]. */
+	input?: ("text" | "image")[];
 	contextWindow?: number;
 	maxTokens?: number;
 	reasoning?: boolean;

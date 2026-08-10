@@ -51,6 +51,7 @@ export async function applyAll(
 				cacheRead: number;
 				cacheWrite: number;
 			};
+			input?: ("text" | "image")[];
 		}>
 	>();
 	for (const p of discovery.builtinProviders) {
@@ -63,6 +64,7 @@ export async function applyAll(
 				contextWindow: m.contextWindow,
 				maxTokens: m.maxTokens,
 				cost: m.cost,
+				input: m.input,
 			})),
 		);
 	}
@@ -140,7 +142,7 @@ export async function applyAll(
 				contextWindow: px.contextWindow,
 				maxTokens: px.maxTokens,
 				cost: px.cost,
-				input: ["text"],
+				input: px.input ?? ["text"],
 				api,
 			});
 		}
@@ -232,7 +234,7 @@ export async function applyAll(
 						base.reasoning,
 						ov.reasoning,
 					) ?? false,
-				input: ["text"],
+				input: m.input ?? fromPool?.input ?? ["text"],
 				cost: m.cost ??
 					fromPool?.cost ??
 					base.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },

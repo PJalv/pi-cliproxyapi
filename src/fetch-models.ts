@@ -50,6 +50,8 @@ export interface DiscoveryModelEntry {
 		cacheRead: number;
 		cacheWrite: number;
 	};
+	/** Input modalities the model accepts, e.g. ["text","image"]. Absent = text-only default. */
+	input?: ("text" | "image")[];
 }
 
 export interface DiscoveryBuiltinProvider {
@@ -81,6 +83,23 @@ export interface Discovery {
 interface RawUpstreamModel {
 	id: string;
 	owned_by: string;
+}
+
+/**
+ * Extract input modalities from a well-known contract model entry.
+ *
+ * Accepts both the flat `input` array and the models.dev-style
+ * `modalities: { inputs: [...] }` shape. Unknown values are dropped;
+ * returns undefined when nothing usable is present (caller keeps its
+ * text-only default).
+ */
+function parseInputModalities(m: any): ("text" | "image")[] | undefined {
+	const raw = m?.input ?? m?.modalities?.inputs ?? m?.modalities?.input;
+	if (!Array.isArray(raw)) return undefined;
+	const out = raw.filter(
+		(v: unknown): v is "text" | "image" => v === "text" || v === "image",
+	);
+	return out.length > 0 ? out : undefined;
 }
 
 // --------------------------------------------------------------------------- HTTP
@@ -207,6 +226,7 @@ async function tryDiscoverySource(
 					typeof m.contextWindow === "number" ? m.contextWindow : 200_000,
 				maxTokens: typeof m.maxTokens === "number" ? m.maxTokens : 16_000,
 				cost: m.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				input: parseInputModalities(m),
 			}),
 		);
 		builtin.push({ name, api: (p.api as Api) ?? "openai-responses", models });
@@ -223,6 +243,7 @@ async function tryDiscoverySource(
 				typeof m.contextWindow === "number" ? m.contextWindow : 128_000,
 			maxTokens: typeof m.maxTokens === "number" ? m.maxTokens : 16_000,
 			cost: m.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			input: parseInputModalities(m),
 			api: (m.api as Api) ?? "openai-completions",
 			suggestedProvider: normalizeSuggestedProvider(
 				typeof m.suggestedProviderName === "string"
