@@ -9,6 +9,7 @@
 
 import type { CustomProviderModelConfig, ProxyConfig } from "./config.ts";
 import type { Discovery } from "./fetch-models.ts";
+import { resolveInput } from "./compat.ts";
 import { log } from "./log.ts";
 
 /**
@@ -37,14 +38,15 @@ export function autoAttachDiscovered(
 	let added = 0;
 	for (const m of discovery.customPool) {
 		if (claimed.has(m.id)) continue;
+		const ov = cfg.overrides[m.id];
 		const entry: CustomProviderModelConfig = {
 			id: m.id,
-			name: m.name,
-			reasoning: m.reasoning,
-			contextWindow: m.contextWindow,
-			maxTokens: m.maxTokens,
-			input: m.input,
-			cost: m.cost,
+			name: ov?.name ?? m.name,
+			reasoning: ov?.reasoning ?? m.reasoning,
+			contextWindow: ov?.contextWindow ?? m.contextWindow,
+			maxTokens: ov?.maxTokens ?? m.maxTokens,
+			input: ov?.input ?? resolveInput(m.input, m.id),
+			cost: ov?.cost ?? m.cost,
 		};
 		group.models.push(entry);
 		claimed.add(m.id);

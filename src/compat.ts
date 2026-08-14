@@ -76,17 +76,30 @@ export function reasoningFromId(id: string): boolean {
 }
 
 /**
- * Parse an `input` array from upstream JSON (e.g. ["text","image"]) when the
- * bridge provides one; otherwise fall back to the id-based heuristic.
+ * Parse an input array from upstream JSON (e.g. ["text","image"]) when the
+ * bridge provides one. Returns `undefined` when upstream says nothing so
+ * callers know they should derive a value from the id.
  */
-export function normalizeInput(raw: unknown, id: string): ("text" | "image")[] {
+export function parseUpstreamInput(raw: unknown): ("text" | "image")[] | undefined {
 	if (Array.isArray(raw)) {
 		const ok = raw.filter(
 			(i: unknown): i is "text" | "image" => i === "text" || i === "image",
 		);
 		if (ok.length > 0) return ok;
 	}
-	return inputFromId(id);
+	return undefined;
+}
+
+/**
+ * Determine the effective input modality list for a model:
+ * 1. honor the upstream `input` list when present
+ * 2. otherwise infer from the model id
+ */
+export function resolveInput(
+	upstreamInput: unknown,
+	id: string,
+): ("text" | "image")[] {
+	return parseUpstreamInput(upstreamInput) ?? inputFromId(id);
 }
 
 /** owned_by → (suggested provider slug, default api). */

@@ -234,7 +234,7 @@ export async function applyAll(
 						base.reasoning,
 						ov.reasoning,
 					) ?? false,
-				input: m.input ?? fromPool?.input ?? base.input ?? ["text"],
+				input: ov.input ?? m.input ?? fromPool?.input ?? base.input ?? ["text"],
 				cost: m.cost ??
 					fromPool?.cost ??
 					base.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },

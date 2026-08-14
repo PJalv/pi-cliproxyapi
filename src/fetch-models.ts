@@ -15,7 +15,7 @@ import {
 	inputFromId,
 	isExcluded,
 	modelDefaults,
-	normalizeInput,
+	parseUpstreamInput,
 	normalizeSuggestedProvider,
 	reasoningFromId,
 } from "./compat.ts";
@@ -211,7 +211,7 @@ async function tryDiscoverySource(
 					typeof m.contextWindow === "number" ? m.contextWindow : 200_000,
 				maxTokens: typeof m.maxTokens === "number" ? m.maxTokens : 16_000,
 				cost: m.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-				input: normalizeInput(m.input, String(m.id)),
+				input: parseUpstreamInput(m.input),
 			}),
 		);
 		builtin.push({ name, api: (p.api as Api) ?? "openai-responses", models });
@@ -228,7 +228,7 @@ async function tryDiscoverySource(
 				typeof m.contextWindow === "number" ? m.contextWindow : 128_000,
 			maxTokens: typeof m.maxTokens === "number" ? m.maxTokens : 16_000,
 			cost: m.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-			input: normalizeInput(m.input, String(m.id)),
+			input: parseUpstreamInput(m.input),
 			api: (m.api as Api) ?? "openai-completions",
 			suggestedProvider: normalizeSuggestedProvider(
 				typeof m.suggestedProviderName === "string"
@@ -335,6 +335,7 @@ function classifyLocally(raw: RawUpstreamModel[], cfg: ProxyConfig): Discovery {
 			reasoning: base.reasoning ?? false,
 			contextWindow: base.contextWindow ?? 128_000,
 			maxTokens: base.maxTokens ?? 16_000,
+			input: base.input,
 			cost: base.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 			api,
 			suggestedProvider: slug,
