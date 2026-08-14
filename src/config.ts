@@ -101,6 +101,8 @@ export interface BuiltinProviderConfig {
 export interface CustomProviderModelConfig {
 	id: string;
 	name?: string;
+	/** Modality whitelist, e.g. ["text","image"]. Defaults to ["text"]. */
+	input?: ("text" | "image")[];
 	contextWindow?: number;
 	maxTokens?: number;
 	reasoning?: boolean;
@@ -127,6 +129,8 @@ export interface ProxyConfig {
 	};
 	builtinProviders: Record<string, BuiltinProviderConfig>;
 	customProviders: Record<string, CustomProviderConfig>;
+	/** Custom-provider key that newly discovered custom-pool models are auto-added to ("" = off). */
+	autoAttachTo?: string;
 	discoveryExcludes: string[];
 	overrides: Record<string, Partial<CustomProviderModelConfig>>;
 	refreshIntervalMinutes: number;
@@ -198,6 +202,9 @@ function normalizeConfig(raw: unknown): ProxyConfig {
 			string,
 			CustomProviderConfig
 		>;
+	}
+	if (typeof r.autoAttachTo === "string" && r.autoAttachTo.trim()) {
+		merged.autoAttachTo = r.autoAttachTo.trim();
 	}
 	if (Array.isArray(r.discoveryExcludes)) {
 		merged.discoveryExcludes = r.discoveryExcludes.filter(

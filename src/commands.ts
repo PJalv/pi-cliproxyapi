@@ -10,7 +10,8 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 
 import { applyAll } from "./apply.ts";
-import { loadConfig, resolveConfigValue } from "./config.ts";
+import { autoAttachDiscovered } from "./auto-attach.ts";
+import { loadConfig, resolveConfigValue, saveConfig } from "./config.ts";
 import { fetchDiscovery } from "./fetch-models.ts";
 import { clearUsageCache } from "./fetch-usage.ts";
 import { runHub } from "./ui-hub/index.ts";
@@ -51,6 +52,7 @@ async function handleCliproxy(
 	let discovery;
 	try {
 		discovery = await fetchDiscovery(current, resolvedKey);
+	if (autoAttachDiscovered(current, discovery) > 0) saveConfig(current);
 	} catch (err) {
 		ctx.ui.notify(`discovery failed: ${(err as Error).message}`, "error");
 		return;
@@ -74,6 +76,7 @@ async function handleSetup(
 			cfg,
 			resolveConfigValue(cfg.proxy.apiKey),
 		);
+		if (autoAttachDiscovered(cfg, discovery) > 0) saveConfig(cfg);
 		const rep = await applyAll(pi, cfg, discovery);
 		clearUsageCache();
 		ctx.ui.notify(

@@ -16,6 +16,7 @@ import {
 } from "@earendil-works/pi-tui";
 
 import { applyAll } from "../apply.ts";
+import { autoAttachDiscovered } from "../auto-attach.ts";
 import type { ProxyConfig } from "../config.ts";
 import { loadConfig, resolveConfigValue, saveConfig } from "../config.ts";
 import type { Discovery } from "../fetch-models.ts";
@@ -101,6 +102,7 @@ export function buildHub(
 		try {
 			const key = resolveConfigValue(cfg.proxy.apiKey);
 			discovery = await fetchDiscovery(cfg, key);
+			if (autoAttachDiscovered(cfg, discovery) > 0) saveConfig(cfg);
 			clearUsageCache();
 			models.rebuild();
 			usage.reload();

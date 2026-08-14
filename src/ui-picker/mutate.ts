@@ -51,6 +51,7 @@ function toEntry(m: ModelEntry): CustomProviderModelConfig {
 		contextWindow: m.contextWindow,
 		maxTokens: m.maxTokens,
 		reasoning: m.reasoning,
+		input: m.input,
 		cost: m.cost,
 	};
 }

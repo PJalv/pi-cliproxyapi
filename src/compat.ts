@@ -52,9 +52,41 @@ const REASONING_RX: RegExp[] = [
 	/^gpt-5(\.\d+)?(-.*)?$/,
 	/^gemini-3(\.\d+)?(-.*)?$/,
 ];
+const VISION_RX: RegExp[] = [
+	/-vision$/,
+	/-omni$/,
+	/-image.*$/,
+	/-multimodal.*$/,
+	/^o1(-.*)?$/,
+	/^gpt-4o(-.*)?$/,
+];
+
+/**
+ * Infer accepted input modalities from a model id when the server doesn't say.
+ * "vision"/"omni"/"image"/"multimodal" are reliable suffix hints.
+ */
+export function inputFromId(id: string): ("text" | "image")[] {
+	return VISION_RX.some((rx) => rx.test(id))
+		? ["text", "image"]
+		: ["text"];
+}
 
 export function reasoningFromId(id: string): boolean {
 	return REASONING_RX.some((rx) => rx.test(id));
+}
+
+/**
+ * Parse an `input` array from upstream JSON (e.g. ["text","image"]) when the
+ * bridge provides one; otherwise fall back to the id-based heuristic.
+ */
+export function normalizeInput(raw: unknown, id: string): ("text" | "image")[] {
+	if (Array.isArray(raw)) {
+		const ok = raw.filter(
+			(i: unknown): i is "text" | "image" => i === "text" || i === "image",
+		);
+		if (ok.length > 0) return ok;
+	}
+	return inputFromId(id);
 }
 
 /** owned_by → (suggested provider slug, default api). */
@@ -123,6 +155,7 @@ export function modelDefaults(id: string): CustomProviderModelConfig {
 		contextWindow: DEFAULT_CONTEXT_WINDOW,
 		maxTokens: DEFAULT_MAX_TOKENS,
 		reasoning: reasoningFromId(id),
+		input: inputFromId(id),
 		cost: { ...DEFAULT_COST },
 	};
 }

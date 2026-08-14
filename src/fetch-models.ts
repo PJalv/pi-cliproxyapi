@@ -12,8 +12,10 @@ import type { Api } from "@earendil-works/pi-ai";
 
 import {
 	classifyCustom,
+	inputFromId,
 	isExcluded,
 	modelDefaults,
+	normalizeInput,
 	normalizeSuggestedProvider,
 	reasoningFromId,
 } from "./compat.ts";
@@ -44,6 +46,8 @@ export interface DiscoveryModelEntry {
 	reasoning: boolean;
 	contextWindow: number;
 	maxTokens: number;
+	/** Accepted input modalities; inferred when upstream omits them. */
+	input: ("text" | "image")[];
 	cost: {
 		input: number;
 		output: number;
@@ -207,6 +211,7 @@ async function tryDiscoverySource(
 					typeof m.contextWindow === "number" ? m.contextWindow : 200_000,
 				maxTokens: typeof m.maxTokens === "number" ? m.maxTokens : 16_000,
 				cost: m.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				input: normalizeInput(m.input, String(m.id)),
 			}),
 		);
 		builtin.push({ name, api: (p.api as Api) ?? "openai-responses", models });
@@ -223,6 +228,7 @@ async function tryDiscoverySource(
 				typeof m.contextWindow === "number" ? m.contextWindow : 128_000,
 			maxTokens: typeof m.maxTokens === "number" ? m.maxTokens : 16_000,
 			cost: m.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			input: normalizeInput(m.input, String(m.id)),
 			api: (m.api as Api) ?? "openai-completions",
 			suggestedProvider: normalizeSuggestedProvider(
 				typeof m.suggestedProviderName === "string"
@@ -369,6 +375,7 @@ function entryToDiscovery(
 		reasoning: base.reasoning ?? false,
 		contextWindow: base.contextWindow ?? 128_000,
 		maxTokens: base.maxTokens ?? 16_000,
+		input: base.input ?? inputFromId(base.id),
 		cost: base.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 	};
 }

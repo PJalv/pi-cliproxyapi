@@ -45,6 +45,7 @@ export async function applyAll(
 			reasoning: boolean;
 			contextWindow: number;
 			maxTokens: number;
+			input?: ("text" | "image")[];
 			cost: {
 				input: number;
 				output: number;
@@ -62,6 +63,7 @@ export async function applyAll(
 				reasoning: m.reasoning,
 				contextWindow: m.contextWindow,
 				maxTokens: m.maxTokens,
+				input: m.input,
 				cost: m.cost,
 			})),
 		);
@@ -140,7 +142,7 @@ export async function applyAll(
 				contextWindow: px.contextWindow,
 				maxTokens: px.maxTokens,
 				cost: px.cost,
-				input: ["text"],
+				input: px.input ?? ["text"],
 				api,
 			});
 		}
@@ -232,7 +234,7 @@ export async function applyAll(
 						base.reasoning,
 						ov.reasoning,
 					) ?? false,
-				input: ["text"],
+				input: m.input ?? fromPool?.input ?? base.input ?? ["text"],
 				cost: m.cost ??
 					fromPool?.cost ??
 					base.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },

@@ -19,9 +19,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { applyAll } from "./src/apply.ts";
+import { autoAttachDiscovered } from "./src/auto-attach.ts";
 import { readDiscoveryCache } from "./src/cache.ts";
 import { registerCommands } from "./src/commands.ts";
-import { loadConfig, resolveConfigValue } from "./src/config.ts";
+import { loadConfig, resolveConfigValue, saveConfig } from "./src/config.ts";
 import { detectConflicts } from "./src/conflicts.ts";
 import { fetchDiscovery } from "./src/fetch-models.ts";
 import type { ProxyConfig } from "./src/config.ts";
@@ -114,6 +115,7 @@ async function revalidateDiscovery(
 ): Promise<void> {
 	try {
 		const fresh = await fetchDiscovery(cfg, resolvedKey);
+		if (autoAttachDiscovered(cfg, fresh) > 0) saveConfig(cfg);
 		await applyAll(pi, cfg, fresh);
 		log.debug("discovery revalidated from network");
 	} catch (e) {
@@ -269,6 +271,7 @@ export default async function cliproxyapi(pi: ExtensionAPI): Promise<void> {
 			);
 		} else {
 			const discovery = await fetchDiscovery(cfg, resolvedKey);
+			if (autoAttachDiscovered(cfg, discovery) > 0) saveConfig(cfg);
 			await applyAll(pi, cfg, discovery);
 		}
 	} catch (err) {
@@ -285,6 +288,7 @@ export default async function cliproxyapi(pi: ExtensionAPI): Promise<void> {
 					const k = resolveConfigValue(c.proxy.apiKey);
 					if (!k) return;
 					const d = await fetchDiscovery(c, k);
+					if (autoAttachDiscovered(c, d) > 0) saveConfig(c);
 					await applyAll(pi, c, d);
 					log.debug("background refresh ok");
 				} catch (e) {

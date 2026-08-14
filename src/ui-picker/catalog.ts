@@ -21,6 +21,7 @@ export function buildCatalog(discovery: Discovery): CatalogIndex {
 				reasoning: m.reasoning,
 				contextWindow: m.contextWindow,
 				maxTokens: m.maxTokens,
+				input: m.input,
 				cost: m.cost,
 			});
 			ids.push(m.id);
@@ -42,6 +43,7 @@ export function buildCatalog(discovery: Discovery): CatalogIndex {
 				reasoning: m.reasoning,
 				contextWindow: m.contextWindow,
 				maxTokens: m.maxTokens,
+				input: m.input,
 				cost: m.cost,
 			});
 		}

@@ -38,6 +38,7 @@ export interface ModelEntry {
 	reasoning: boolean;
 	contextWindow: number;
 	maxTokens: number;
+	input?: ("text" | "image")[];
 	cost?: {
 		input: number;
 		output: number;
