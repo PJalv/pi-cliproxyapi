@@ -13,7 +13,6 @@ import { ALLOWED_APIS, baseUrlFor, modelDefaults } from "./compat.ts";
 import type { CustomProviderModelConfig, ProxyConfig } from "./config.ts";
 import { resolveConfigValue } from "./config.ts";
 import type { Discovery, DiscoveryCustomEntry } from "./fetch-models.ts";
-import { discoveryToIdSet } from "./fetch-models.ts";
 import { log } from "./log.ts";
 
 export interface ApplyReport {
@@ -27,7 +26,6 @@ export async function applyAll(
 	discovery: Discovery,
 ): Promise<ApplyReport> {
 	const report: ApplyReport = { registered: [], skipped: [] };
-	const proxyIds = discoveryToIdSet(discovery);
 	const resolvedKey = resolveConfigValue(cfg.proxy.apiKey);
 	if (!resolvedKey) {
 		log.warn(
@@ -112,9 +110,11 @@ export async function applyAll(
 		}
 		const selected: MergedModel[] = [];
 		for (const id of p.models) {
-			if (!proxyIds.has(id)) continue;
-			const c = catalogById.get(id);
+			// A whitelist entry only exists if the proxy still serves it —
+			// the pi-ai static catalog is metadata, never a source of truth.
 			const px = proxyById.get(id);
+			if (!px) continue;
+			const c = catalogById.get(id);
 			if (c) {
 				selected.push({
 					id: c.id,
@@ -129,7 +129,6 @@ export async function applyAll(
 				});
 				continue;
 			}
-			if (!px) continue;
 			// Catalog miss — fall back to proxy metadata. Pick API by provider name.
 			const api: Api =
 				name === "anthropic"
@@ -209,8 +208,8 @@ export async function applyAll(
 			});
 			continue;
 		}
-		const present: CustomProviderModelConfig[] = c.models.filter((m) =>
-			proxyIds.has(m.id),
+		const present: CustomProviderModelConfig[] = c.models.filter(
+			(m) => proxyCustomById.has(m.id),
 		);
 		if (present.length === 0) {
 			report.skipped.push({

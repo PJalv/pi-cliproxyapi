@@ -16,7 +16,7 @@ import {
 } from "@earendil-works/pi-tui";
 
 import { applyAll } from "../apply.ts";
-import { autoAttachDiscovered } from "../auto-attach.ts";
+import { syncConfigWithDiscoveryReport } from "../auto-attach.ts";
 import type { ProxyConfig } from "../config.ts";
 import { loadConfig, resolveConfigValue, saveConfig } from "../config.ts";
 import type { Discovery } from "../fetch-models.ts";
@@ -102,14 +102,21 @@ export function buildHub(
 		try {
 			const key = resolveConfigValue(cfg.proxy.apiKey);
 			discovery = await fetchDiscovery(cfg, key);
-			if (autoAttachDiscovered(cfg, discovery) > 0) saveConfig(cfg);
+			const sync = syncConfigWithDiscoveryReport(cfg, discovery);
+			if (sync.added > 0 || sync.removed > 0) saveConfig(cfg);
 			clearUsageCache();
 			models.rebuild();
 			usage.reload();
 			const rep = await applyAll(pi, cfg, discovery);
+			const removedNote =
+				sync.removed > 0
+					? ` \u00b7 ${sync.removed} removed (gone from proxy)`
+					: "";
+			const addedNote =
+				sync.added > 0 ? ` \u00b7 ${sync.added} added` : "";
 			flash = theme.fg(
 				"success",
-				`\u2713 refreshed \u00b7 ${rep.registered.length} providers (${discovery.source})`,
+				`\u2713 refreshed \u00b7 ${rep.registered.length} providers (${discovery.source})${addedNote}${removedNote}`,
 			);
 		} catch (e) {
 			flash = theme.fg("error", `refresh failed: ${(e as Error).message}`);
