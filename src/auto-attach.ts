@@ -2,10 +2,9 @@
 // what the proxy actually serves — add models that newly appear and remove
 // models that no longer do.
 //
-// Opt-in via config: "autoAttachTo": "<customProviderKey>" (e.g. "cliproxy-group").
-// Only custom-pool models that are not already assigned to any group are added
-// (the same exclusivity rule the hub picker uses); the target group is created
-// with api "openai-completions" if it does not exist yet.
+// Custom-pool auto-attach is opt-in via config: "autoAttachTo":
+// "<customProviderKey>" (e.g. "cliproxy-group"). Enabled OpenAI providers
+// automatically include every model that the proxy classifies as OpenAI.
 //
 // Removal is unconditional (independent of autoAttachTo): a model that
 // disappeared upstream is dropped from every group, and user-set metadata
@@ -22,7 +21,7 @@ import { log } from "./log.ts";
 
 /** Result of syncing one config against a fresh discovery. */
 export interface SyncReport {
-	/** Custom-pool models added to the auto-attach target group. */
+	/** Models added to configured groups. */
 	added: number;
 	/** Configured model ids removed because the proxy no longer serves them. */
 	removed: number;
@@ -31,9 +30,8 @@ export interface SyncReport {
 }
 
 /**
- * Add every discovery custom-pool model that isn't already assigned anywhere
- * to the group named by cfg.autoAttachTo, and remove every configured model
- * the proxy no longer serves. Returns the number of models added.
+ * Add newly discovered models to configured auto-managed groups and remove
+ * every configured model the proxy no longer serves. Returns models added.
  */
 export function autoAttachDiscovered(
 	cfg: ProxyConfig,
@@ -49,9 +47,10 @@ export function autoAttachDiscovered(
  *   metadata for models that survive (discovery metadata is only filled in
  *   when a field was never set by the user)
  * - auto-attach target: add unclaimed custom-pool models
- * - builtin whitelists: drop ids the proxy no longer serves
+ * - OpenAI whitelist: add newly discovered models and drop ids the proxy no
+ *   longer serves
  *
- * Returns the number of models added to the auto-attach group.
+ * Returns the number of models added to configured groups.
  */
 export function syncConfigWithDiscovery(
 	cfg: ProxyConfig,
@@ -116,21 +115,34 @@ export function syncConfigWithDiscoveryReport(
 	}
 
 	// ----- builtin whitelists --------------------------------------------------
-	const builtinIds = new Set<string>();
-	for (const p of discovery.builtinProviders) {
-		for (const m of p.models) builtinIds.add(m.id);
-	}
-	for (const p of Object.values(cfg.builtinProviders)) {
+	const builtinByName = new Map(
+		discovery.builtinProviders.map((p) => [p.name, p.models]),
+	);
+	for (const [name, p] of Object.entries(cfg.builtinProviders)) {
+		const discovered = builtinByName.get(name) ?? [];
+		const discoveredIds = new Set(discovered.map((m) => m.id));
 		const before = p.models.length;
 		p.models = p.models.filter((id) => {
-			const keep = builtinIds.has(id);
+			const keep = discoveredIds.has(id);
 			if (!keep) removed.push(id);
 			return keep;
 		});
 		if (p.models.length < before) {
 			log.info(
-				`autoAttach: pruned ${before - p.models.length} missing model(s) from a builtin group`,
+				`autoAttach: pruned ${before - p.models.length} missing model(s) from builtin group "${name}"`,
 			);
+		}
+
+		// An enabled OpenAI provider mirrors the proxy catalogue. This makes new
+		// GPT models usable immediately without a second manual checkbox step.
+		if (name === "openai" && p.enabled) {
+			const configured = new Set(p.models);
+			for (const m of discovered) {
+				if (configured.has(m.id)) continue;
+				p.models.push(m.id);
+				configured.add(m.id);
+				added++;
+			}
 		}
 	}
 
