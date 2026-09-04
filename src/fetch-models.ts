@@ -38,7 +38,9 @@ export const PLUGIN_VERSION: string = (() => {
 })();
 
 export const PLUGIN_USER_AGENT = `pi-cliproxyapi/${PLUGIN_VERSION}`;
-const REQUEST_TIMEOUT_MS = 5_000;
+// The forked CLIProxyAPI may build its model catalogue on demand. Five
+// seconds is too short for a cold refresh and makes the UI report a timeout.
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export interface DiscoveryModelEntry {
 	id: string;

@@ -316,18 +316,29 @@ export default async function cliproxyapi(pi: ExtensionAPI): Promise<void> {
 	if (resolvedUsageKey || cfg.proxy.apiKey) {
 		let lastTurnFetchMs = 0;
 
-		// session_start: render immediately from cache (no fetch needed if fresh).
+		// Never put the quota HTTP request on Pi's startup path. Render whatever is
+		// already cached, then update it in the background. Pi awaits async event
+		// handlers, so awaiting a stale-cache refresh here can delay boot by the
+		// full request timeout.
 		pi.on("session_start", async (_event, ctx) => {
 			if (!ctx.hasUI) return;
-			await refreshQuotaStatus(cfg, resolvedUsageKey, ctx.ui, ctx.model);
+			await refreshQuotaStatus(cfg, resolvedUsageKey, ctx.ui, ctx.model, {
+				readOnly: true,
+			});
 			warnIfLegacyUsageSource(ctx.ui);
+			void refreshQuotaStatus(cfg, resolvedUsageKey, ctx.ui, ctx.model).catch(
+				(e: unknown) =>
+					log.debug("background startup quota refresh failed:", (e as Error).message),
+			);
 		});
 
-		// model_select: re-render for the new provider. Read from cache so the
-		// segment updates instantly on model switch without a network round-trip.
+		// Model switching must also stay local and instant. The startup/turn-end
+		// background fetches keep this shared cache current.
 		pi.on("model_select", async (_event, ctx) => {
 			if (!ctx.hasUI) return;
-			await refreshQuotaStatus(cfg, resolvedUsageKey, ctx.ui, ctx.model);
+			await refreshQuotaStatus(cfg, resolvedUsageKey, ctx.ui, ctx.model, {
+				readOnly: true,
+			});
 		});
 
 		// turn_end: after an LLM response the quota has changed. Trigger a fetch
