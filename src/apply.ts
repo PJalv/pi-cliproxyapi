@@ -44,6 +44,7 @@ export async function applyAll(
 			contextWindow: number;
 			maxTokens: number;
 			input?: ("text" | "image")[];
+			thinkingLevelMap?: Record<string, string>;
 			cost: {
 				input: number;
 				output: number;
@@ -62,6 +63,7 @@ export async function applyAll(
 				contextWindow: m.contextWindow,
 				maxTokens: m.maxTokens,
 				input: m.input,
+				thinkingLevelMap: m.thinkingLevelMap,
 				cost: m.cost,
 			})),
 		);
@@ -143,6 +145,7 @@ export async function applyAll(
 				cost: px.cost,
 				input: px.input ?? ["text"],
 				api,
+				thinkingLevelMap: px.thinkingLevelMap,
 			});
 		}
 		if (selected.length === 0) {
@@ -222,36 +225,43 @@ export async function applyAll(
 			const fromPool = proxyCustomById.get(m.id);
 			const base = modelDefaults(m.id);
 			const ov = cfg.overrides[m.id] ?? {};
-			return {
+			const model: ProviderModelConfig = {
 				id: m.id,
-				name: m.name ?? fromPool?.name ?? base.name ?? m.id,
+				name: fromPool?.name ?? m.name ?? base.name ?? m.id,
 				api: c.api,
+				// Live bridge metadata wins over the persisted discovery snapshot.
 				reasoning:
 					pickBool(
-						m.reasoning,
 						fromPool?.reasoning,
+						m.reasoning,
 						base.reasoning,
 						ov.reasoning,
 					) ?? false,
-				input: ov.input ?? m.input ?? fromPool?.input ?? base.input ?? ["text"],
-				cost: m.cost ??
-					fromPool?.cost ??
+				input:
+					pickInput(ov.input, fromPool?.input, m.input, base.input) ??
+						["text"],
+				cost: fromPool?.cost ??
+					m.cost ??
 					base.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 				contextWindow:
 					pickNum(
-						m.contextWindow,
 						fromPool?.contextWindow,
+						m.contextWindow,
 						base.contextWindow,
 						ov.contextWindow,
 					) ?? 128000,
 				maxTokens:
 					pickNum(
-						m.maxTokens,
 						fromPool?.maxTokens,
+						m.maxTokens,
 						base.maxTokens,
 						ov.maxTokens,
 					) ?? 16000,
 			};
+			if (fromPool?.thinkingLevelMap) {
+				model.thinkingLevelMap = fromPool.thinkingLevelMap;
+			}
+			return model;
 		});
 		const providerConfig: ProviderConfig = {
 			name,
@@ -281,5 +291,20 @@ function pickNum(...vals: Array<number | undefined>): number | undefined {
 }
 function pickBool(...vals: Array<boolean | undefined>): boolean | undefined {
 	for (const v of vals) if (typeof v === "boolean") return v;
+	return undefined;
+}
+
+/**
+ * Input modality precedence: explicit overrides first, then FRESH discovery
+ * (fromPool) ahead of the stale stored entry (m.input). A model that was
+ * auto-attached when the bridge reported text-only must re-advertise image
+ * support once the bridge catches up, rather than being pinned to the old
+ * concrete value. The stored entry still wins over the id-inference base.
+ */
+function pickInput(
+	...vals: Array<readonly ("text" | "image")[] | undefined>
+): ("text" | "image")[] | undefined {
+	for (const v of vals)
+		if (Array.isArray(v) && v.length > 0) return [...v];
 	return undefined;
 }

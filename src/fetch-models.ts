@@ -46,10 +46,12 @@ export interface DiscoveryModelEntry {
 	id: string;
 	name: string;
 	reasoning: boolean;
+	/** Canonical Pi level -> provider level, supplied by the live proxy config. */
+	thinkingLevelMap?: Record<string, string>;
 	contextWindow: number;
 	maxTokens: number;
 	/** Accepted input modalities; inferred when upstream omits them. */
-	input: ("text" | "image")[];
+	input?: ("text" | "image")[];
 	cost: {
 		input: number;
 		output: number;
@@ -151,9 +153,13 @@ async function tryWellKnown(cfg: ProxyConfig): Promise<Discovery | null> {
 			[CONTRACT_HEADER]: String(PREFERRED_CONTRACT),
 		};
 		for (const path of [PLUGIN_DISCOVERY_PATH, PLUGIN_DISCOVERY_PATH_LEGACY]) {
+			const discoveryURL = new URL(path, origin);
+			// A Pi refresh must re-read CLIProxyAPI's live config, not merely the
+			// bridge's previous capability document.
+			discoveryURL.searchParams.set("refresh", "1");
 			const viaPlugin = await tryDiscoverySource(
 				cfg,
-				new URL(path, origin).toString(),
+				discoveryURL.toString(),
 				headers,
 				"pi-bridge",
 			);
@@ -209,6 +215,10 @@ async function tryDiscoverySource(
 				id: String(m.id),
 				name: typeof m.name === "string" ? m.name : String(m.id),
 				reasoning: Boolean(m.reasoning ?? reasoningFromId(String(m.id))),
+				thinkingLevelMap:
+					m.thinkingLevelMap && typeof m.thinkingLevelMap === "object"
+						? m.thinkingLevelMap
+						: undefined,
 				contextWindow:
 					typeof m.contextWindow === "number" ? m.contextWindow : 200_000,
 				maxTokens: typeof m.maxTokens === "number" ? m.maxTokens : 16_000,
@@ -226,6 +236,10 @@ async function tryDiscoverySource(
 			id: String(m.id),
 			name: typeof m.name === "string" ? m.name : String(m.id),
 			reasoning: Boolean(m.reasoning ?? reasoningFromId(String(m.id))),
+			thinkingLevelMap:
+				m.thinkingLevelMap && typeof m.thinkingLevelMap === "object"
+					? m.thinkingLevelMap
+					: undefined,
 			contextWindow:
 				typeof m.contextWindow === "number" ? m.contextWindow : 128_000,
 			maxTokens: typeof m.maxTokens === "number" ? m.maxTokens : 16_000,
