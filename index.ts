@@ -227,12 +227,13 @@ export default async function cliproxyapi(pi: ExtensionAPI): Promise<void> {
 	const headless = isHeadlessRun();
 	if (!headless) registerCommands(pi);
 
-	// Route later messages through pi's notification channel. Startup runs before
-	// any session exists, so those messages have no UI to reach and are kept off
-	// the terminal instead (see log.ts).
-	pi.on("session_start", (_event, ctx) => {
-		setLogSink(ctx.hasUI ? ctx.ui : null);
-	});
+	// Route later messages through pi's notification channel. Headless children
+	// need providers only and must not register lifecycle handlers.
+	if (!headless) {
+		pi.on("session_start", (_event, ctx) => {
+			setLogSink(ctx.hasUI ? ctx.ui : null);
+		});
+	}
 
 	const cfg = loadConfig();
 	const resolvedKey = resolveConfigValue(cfg.proxy.apiKey);
@@ -313,7 +314,7 @@ export default async function cliproxyapi(pi: ExtensionAPI): Promise<void> {
 		: resolveConfigValue(cfg.proxy.usageKey);
 	// Quota is available through the pi-bridge plugin (ordinary API key) or the
 	// legacy sidecar (separate usage key), so either credential enables it.
-	if (resolvedUsageKey || cfg.proxy.apiKey) {
+	if (!headless && (resolvedUsageKey || cfg.proxy.apiKey)) {
 		let lastTurnFetchMs = 0;
 
 		// Never put the quota HTTP request on Pi's startup path. Render whatever is
